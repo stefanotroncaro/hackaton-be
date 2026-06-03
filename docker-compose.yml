@@ -1,0 +1,152 @@
+services:
+  db:
+    image: postgres:16.9
+    container_name: app-db
+    volumes:
+      - app-db-data:/var/lib/postgresql/data/pgdata
+    env_file:
+      - .env
+    ports:
+      - ${DB_PORT:-5432}:5432
+    environment:
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  test-db:
+    image: postgres:16.9
+    container_name: app-test-db
+    env_file:
+      - .env.test
+    ports:
+      - ${TEST_DB_PORT:-54321}:5432
+    environment:
+      - POSTGRES_SERVER=test-db
+      - POSTGRES_USER=test
+      - POSTGRES_PASSWORD=test
+      - POSTGRES_DB=test-db
+
+  api:
+    build:
+      context: .
+      args:
+        - RUN_ENV=${RUN_ENV:-local}
+    depends_on:
+      db:
+        condition: service_healthy
+    container_name: app-api
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-test}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-test}
+      - AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL:-http://localstack:4566}
+    ports:
+      - ${API_PORT:-8000}:8000
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /code
+          ignore:
+            - .venv/
+            - .env
+        - action: rebuild
+          path: ./uv.lock
+        - action: rebuild
+          path: ./.env
+
+  celery_worker:
+    container_name: celery-worker
+    build:
+      context: .
+      args:
+        - RUN_ENV=${RUN_ENV:-local}
+    entrypoint:
+      - app/celery/start-celery-worker.sh
+    depends_on:
+      localstack:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-test}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-test}
+      - AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL:-http://localstack:4566}
+    ports:
+      - "6379:6379"
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /code
+          ignore:
+            - .venv/
+            - .env
+        - action: rebuild
+          path: ./uv.lock
+        - action: rebuild
+          path: ./.env
+
+  celery_beat:
+    container_name: celery-beat
+    build:
+      context: .
+      args:
+        - RUN_ENV=${RUN_ENV:-local}
+    entrypoint:
+      - app/celery/start-celery-beat.sh
+    depends_on:
+      localstack:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-test}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-test}
+      - AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL:-http://localstack:4566}
+    ports:
+      - "6479:6479"
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /code
+          ignore:
+            - .venv/
+            - .env
+        - action: rebuild
+          path: ./uv.lock
+        - action: rebuild
+          path: ./.env
+
+  localstack:
+    container_name: localstack-main
+    image: localstack/localstack
+    ports:
+      - 4566:4566
+    environment:
+      - SERVICES=ses,sqs
+    volumes:
+      - localstack-data:/var/lib/localstack
+      - ./scripts/init-localstack.sh:/etc/localstack/init/ready.d/init-localstack.sh
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  mailpit:
+    image: "axllent/mailpit:latest"
+    ports:
+      - "${FORWARD_MAILPIT_PORT:-1025}:1025"
+      - "${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025"
+
+volumes:
+  app-db-data:
+  localstack-data:

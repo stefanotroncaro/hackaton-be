@@ -1,0 +1,54 @@
+name: Pytest
+
+on:
+  pull_request:
+    types: [labeled]
+    branches:
+      - "*"
+
+jobs:
+  test:
+    if: "contains(github.event.pull_request.labels.*.name, 'run-tests')"
+    name: Run Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    container: python:3.12.2
+
+    services:
+      test-db:
+          image: postgres:latest
+          env:
+            POSTGRES_USER: test
+            POSTGRES_PASSWORD: test
+            POSTGRES_DB: test-db
+          ports:
+            - 5432:5432
+          options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Cache Poetry packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: Install Poetry
+        run: |
+          pip install poetry
+
+      - name: Set Poetry config
+        run: |
+          poetry config virtualenvs.create false
+
+      - name: Install Dependencies
+        run: poetry install
+        if: steps.cache.outputs.cache-hit != 'true'
+
+      - name: Run pytest
+        run: |
+          poetry run ./tests-start.sh

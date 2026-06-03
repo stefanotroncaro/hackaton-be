@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: format-script
+        name: format-script
+        entry: scripts/format.sh
+        language: script
+        types: [python]
+        pass_filenames: false
