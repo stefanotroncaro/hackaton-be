@@ -2,3 +2,5 @@
 # imported by Alembic
 from app.common.models.base_class import Base  # noqa
 from app.users.models.user import User  # noqa
+from app.patients.models.patient import Patient  # noqa
+from app.patients.models.invitation import Invitation  # noqa

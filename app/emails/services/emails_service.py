@@ -9,6 +9,7 @@ from app.emails._global_state import get_client
 
 class Paths(Enum):
     NEW_USER = "app/emails/templates/welcome_email.html"
+    INTAKE_INVITATION = "app/emails/templates/intake_invitation_email.html"
 
 
 class EmailService:
@@ -54,6 +55,20 @@ class EmailService:
             user.email,
             Paths.NEW_USER.value,
             "Welcome",
+        )
+
+        return self.email_client.send_email(email)
+
+    def send_intake_invitation_email(
+        self,
+        recipient_email: str,
+        intake_url: str,
+    ) -> None:
+        email = self._get_email(
+            recipient_email,
+            Paths.INTAKE_INVITATION.value,
+            "You have been invited to complete your intake form",
+            {"intake_url": intake_url},
         )
 
         return self.email_client.send_email(email)

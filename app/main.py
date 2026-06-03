@@ -151,6 +151,7 @@ from app.two_factor_authentication.api.router import (
 )
 from app.auth.api.routers import api_router as auth_router
 from app.common.api.routers import api_router as common_router
+from app.patients.api.routers import api_router as patients_router
 
 app.include_router(users_router, prefix=settings.API_V1_STR)
 app.include_router(auth_router, prefix=settings.API_V1_STR)
@@ -158,3 +159,4 @@ app.include_router(common_router, prefix=settings.API_V1_STR)
 app.include_router(
     two_factor_authentication_router, prefix=settings.API_V1_STR
 )
+app.include_router(patients_router, prefix=settings.API_V1_STR)

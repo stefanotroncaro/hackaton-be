@@ -9,6 +9,7 @@ from app.core.config import get_settings
 from app.common.models.base_class import Base
 from app.users.models import *  # noqa
 from app.two_factor_authentication.models import *  # noqa
+from app.patients.models import *  # noqa
 
 
 # this is the Alembic Config object, which provides
